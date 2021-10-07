@@ -157,7 +157,7 @@ GoldenTest golden_tests[] = {
     {nullptr, "", 0},
 };
 
-static void do_golden_tests() {
+extern "C" void do_golden_tests() {
   bool failed = false;
   for (size_t i = 0; golden_tests[i].fn; i++) {
     const GoldenTest& test = golden_tests[i];
@@ -210,8 +210,14 @@ struct Menu MENU = {
 
 }  // anonymous namespace
 
+// Initialize with the tiled version
+extern "C" void hps_model_init(void) {
+  puts("Loading Tiled HPS model");
+  do_init_01_05_74ops();
+}
+
 // For integration into menu system
 extern "C" void hps_model_menu() {
-  do_init_01_05_74ops();
+  hps_model_init();
   menu_run(&MENU);
 }

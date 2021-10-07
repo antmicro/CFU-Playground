@@ -24,4 +24,8 @@ extern "C" {
 // HPS model processing menu
 void hps_model_menu();
 
+void hps_model_init();
+
+void do_golden_tests();
+
 #endif  // _HPS_MODEL_H
