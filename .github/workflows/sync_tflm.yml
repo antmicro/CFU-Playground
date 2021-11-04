@@ -33,6 +33,7 @@ jobs:
 
       - name: Sync the code, commit and push
         run: |
+          pip3 install six Pillow Wave
           ./scripts/sync_from_tflite_micro.sh
           git add *
 
