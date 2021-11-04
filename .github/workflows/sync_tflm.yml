@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-python@v2
       - uses: actions/checkout@v2
         with:
-          token: ${{ secrets.GH_SERVICE_ACCOUNT_TOKEN }}
+          token: $GH_SERVICE_ACCOUNT_TOKEN
 
       - name: Configure git
         run: |
