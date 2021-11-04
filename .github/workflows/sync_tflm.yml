@@ -51,8 +51,8 @@ jobs:
           token: ${{ secrets.GH_SERVICE_ACCOUNT_TOKEN }}
           title: (CFU Playground) Automated sync from github.com/tensorflow/tflite-micro
           commit-message: Automated sync from github.com/tensorflow/tflite-micro
-          committer: $GH_SERVICE_ACCOUNT_NAME $GH_SERVICE_ACCOUNT_EMAIL
-          author: $GH_SERVICE_ACCOUNT_NAME $GH_SERVICE_ACCOUNT_EMAIL
+          committer: $GH_SERVICE_ACCOUNT_NAME <$GH_SERVICE_ACCOUNT_EMAIL>
+          author: $GH_SERVICE_ACCOUNT_NAME <$GH_SERVICE_ACCOUNT_EMAIL>
           body: "(CFU Playground) Automated sync from github.com/tensorflow/tflite-micro"
 
       - name: Enable Pull Request Automerge
