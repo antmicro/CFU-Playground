@@ -1,0 +1,70 @@
+name: Sync from Renode
+
+on:
+  schedule:
+    - cron: 0 2 * * *
+
+  # Allow manual triggering of the workflow.
+  workflow_dispatch: {}
+
+jobs:
+  sync-renode:
+    runs-on: ubuntu-latest
+
+    if: |
+      github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+
+    env:
+      GH_SERVICE_ACCOUNT_NAME: "tflite-bot"
+      GH_SERVICE_ACCOUNT_EMAIL: "tflite-bot@antmicro.com"
+
+    steps:
+      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_SERVICE_ACCOUNT_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config --global user.name $GH_SERVICE_ACCOUNT_NAME
+          git config --global user.email $GH_SERVICE_ACCOUNT_EMAIL
+
+      - name: Sync the code and commit
+        run: |
+          rm -rf ./third_party/renode/*
+          wget --progress=dot:giga "https://dl.antmicro.com/projects/renode/builds/renode-latest.linux-portable.tar.gz"
+          tar xf renode-latest.linux-portable.tar.gz
+          rm renode-latest.linux-portable.tar.gz
+
+          RENODE_DIRNAME=$(basename renode_*_portable)
+          RENODE_VERSION=${RENODE_DIRNAME#*_}
+          RENODE_VERSION=${RENODE_VERSION%_*}
+          echo $RENODE_VERSION > conf/renode.version
+          git add conf/renode.version
+
+          if [ -n "$(git status --porcelain)" ]; then
+            RENODE_SHA=${RENODE_VERSION#*git}
+            git commit -m "Sync from Renode at $RENODE_SHA."
+          else
+            echo "no changes"
+          fi
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v3
+        with:
+          branch: sync-from-renode
+          delete-branch: true
+          token: ${{ secrets.GH_SERVICE_ACCOUNT_TOKEN }}
+          title: (CFU Playground) Automated sync from builds.renode.io
+          commit-message: Automated sync from builds.renode.io
+          committer: ${{ env.GH_SERVICE_ACCOUNT_NAME }} <${{ env.GH_SERVICE_ACCOUNT_EMAIL }}>
+          author: ${{ env.GH_SERVICE_ACCOUNT_NAME }} <${{ env.GH_SERVICE_ACCOUNT_EMAIL }}>
+          body: "(CFU Playground) Automated sync from builds.renode.io"
+
+      - name: Enable Pull Request Automerge
+        if: steps.create-pr.outputs.pull-request-operation == 'created'
+        uses: peter-evans/enable-pull-request-automerge@v1
+        with:
+          token: ${{ secrets.GH_SERVICE_ACCOUNT_TOKEN }}
+          pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
