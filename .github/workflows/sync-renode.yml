@@ -6,13 +6,14 @@ on:
 
   # Allow manual triggering of the workflow.
   workflow_dispatch: {}
+  push: {}
 
 jobs:
   sync-renode:
     runs-on: ubuntu-latest
 
     if: |
-      github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+      github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push'
 
     env:
       GH_SERVICE_ACCOUNT_NAME: "tflite-bot"
