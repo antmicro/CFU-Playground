@@ -1,4 +1,4 @@
-name: Sync Renode
+name: Sync from Renode
 
 on:
   schedule:
@@ -6,13 +6,14 @@ on:
 
   # Allow manually triggering of the workflow.
   workflow_dispatch: {}
+  push: {}
 
 jobs:
-  sync-tflite-micro:
+  sync-renode:
     runs-on: ubuntu-latest
 
     if: |
-      github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+      github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push'
 
     env:
       GH_SERVICE_ACCOUNT_NAME: "tflite-bot"
@@ -29,18 +30,24 @@ jobs:
           git config --global user.name $GH_SERVICE_ACCOUNT_NAME
           git config --global user.email $GH_SERVICE_ACCOUNT_EMAIL
 
-      - name: Sync the code, commit and push
+      - name: Sync the code and commit
         run: |
           rm -rf ./third_party/renode/*
           wget --progress=dot:giga "https://dl.antmicro.com/projects/renode/builds/renode-latest.linux-portable.tar.gz"
-          tar xf  renode-latest.linux-portable.tar.gz -C ./third_party/renode --strip-components=1
-          
-          export TFLM_SHA=$(git ls-remote https://github.com/tensorflow/tflite-micro.git main | cut -c1-7)
-          ./scripts/sync_from_tflite_micro.sh
-          git add *
+          tar xf renode-latest.linux-portable.tar.gz
+          rm renode-latest.linux-portable.tar.gz
+
+          RENODE_DIRNAME=$(basename renode_*_portable)
+          RENODE_SHA=${RENODE_DIRNAME#*git}
+          RENODE_SHA=${RENODE_SHA%_*}
+          echo $RENODE_SHA > conf/renode.version
+          git add conf/renode.version
+
+          mv $RENODE_DIRNAME third_party/renode
+          git add third_party/renode
 
           if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "Sync from tflite-micro at $TFLM_SHA."
+            git commit -m "Sync from Renode at $RENODE_SHA."
           else
             echo "no changes"
           fi
@@ -49,14 +56,14 @@ jobs:
         id: create-pr
         uses: peter-evans/create-pull-request@v3
         with:
-          branch: sync-from-tflite-micro
+          branch: sync-from-renode
           delete-branch: true
           token: ${{ secrets.GH_SERVICE_ACCOUNT_TOKEN }}
-          title: (CFU Playground) Automated sync from github.com/tensorflow/tflite-micro
-          commit-message: Automated sync from github.com/tensorflow/tflite-micro
+          title: (CFU Playground) Automated sync from github.com/renode/renode
+          commit-message: Automated sync from github.com/renode/renode
           committer: $GH_SERVICE_ACCOUNT_NAME <$GH_SERVICE_ACCOUNT_EMAIL>
           author: $GH_SERVICE_ACCOUNT_NAME <$GH_SERVICE_ACCOUNT_EMAIL>
-          body: "(CFU Playground) Automated sync from github.com/tensorflow/tflite-micro"
+          body: "(CFU Playground) Automated sync from github.com/renode/renode"
 
       - name: Enable Pull Request Automerge
         if: steps.create-pr.outputs.pull-request-operation == 'created'

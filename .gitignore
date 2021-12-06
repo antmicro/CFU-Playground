@@ -83,7 +83,7 @@ csr.csv
 .env
 
 # Renode setup
-third_party/renode
+!third_party/renode
 
 # Robot test results
 log.html
