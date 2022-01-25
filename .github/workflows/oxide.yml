@@ -1,5 +1,5 @@
 name: oxide_ci
-on: [push, pull_request]
+on: [pull_request]
 jobs:
   install-use-oxide-conda:
     runs-on: ubuntu-latest

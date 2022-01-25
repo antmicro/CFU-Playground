@@ -1,13 +1,13 @@
 name: Test projects
 on:
-  push:
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'LICENSE'
-      - 'CONTRIBUTING.md'
-      - 'CODE_OF_CONDUCT.md'
-      - 'AUTHORS'
+  #  push:
+  #    paths-ignore:
+  #      - 'docs/**'
+  #      - 'README.md'
+  #      - 'LICENSE'
+  #      - 'CONTRIBUTING.md'
+  #      - 'CODE_OF_CONDUCT.md'
+  #      - 'AUTHORS'
   pull_request:
     paths-ignore:
       - 'docs/**'

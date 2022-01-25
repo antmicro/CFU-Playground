@@ -1,6 +1,7 @@
 name: Update Renode
 
 on:
+  push:
   schedule:
     - cron: 0 2 * * *
 
@@ -65,21 +66,21 @@ jobs:
         if: steps.sync-and-commit.outputs.committed == 'true'
         uses: peter-evans/create-pull-request@v3
         with:
-          branch: update-renode
-          base: main
+          branch: aj-update-renode
+          base: aj-fix-renode-sync
           delete-branch: true
           signoff: true
           committer: CFU Playground Bot <cfu-playground-bot@google.com>
           author: CFU Playground Bot <cfu-playground-bot@google.com>
-          token: ${{ secrets.CFU_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           title: (CFU Playground) Automatic Renode update from builds.renode.io
           commit-message: Automatic Renode update from builds.renode.io
           body: "(CFU Playground) Automatic Renode update from builds.renode.io"
 
-      - name: Enable automerge
-        if: steps.create-pr.outputs.pull-request-operation == 'created'
-        uses: peter-evans/enable-pull-request-automerge@v1
-        with:
-          token: ${{ secrets.CFU_BOT_TOKEN }}
-          merge-method: rebase
-          pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
+            #      - name: Enable automerge
+            #        if: steps.create-pr.outputs.pull-request-operation == 'created'
+            #        uses: peter-evans/enable-pull-request-automerge@v1
+            #        with:
+            #          token: ${{ secrets.CFU_BOT_TOKEN }}
+            #          merge-method: rebase
+            #          pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}

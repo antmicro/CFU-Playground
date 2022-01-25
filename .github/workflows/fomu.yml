@@ -1,5 +1,5 @@
 name: fomu_ci
-on: [push, pull_request]
+on: [pull_request]
 jobs:
   fomu-build:
     runs-on: ubuntu-latest
