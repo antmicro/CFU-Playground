@@ -420,7 +420,12 @@ TfLiteStatus InitializeTfLiteTensorFromFlatbuffer(
     quantization->zero_point->size = channels;
     int* zero_point_data = quantization->zero_point->data;
     for (int i = 0; i < channels; i++) {
-      zero_point_data[i] = src_quantization->zero_point()->Get(i);
+      // As a space-saving optimization, zero point arrays for weights can be
+      // reduced to a single value, since all zero points for weights are 0.
+      zero_point_data[i] = src_quantization->zero_point()->size() ==
+                                   src_quantization->scale()->size()
+                               ? src_quantization->zero_point()->Get(i)
+                               : src_quantization->zero_point()->Get(0);
     }
     // TODO(rocky): Need to add a micro_allocator test case that fails when
     // this is not copied:
@@ -455,15 +460,22 @@ TfLiteStatus InitializeTfLiteEvalTensorFromFlatbuffer(
 
 }  // namespace internal
 
-extern const size_t kMicroAllocatorDefaultTailUsageWithGivenMemoryPlanner =
-    AlignSizeUp(sizeof(SimpleMemoryAllocator), alignof(SimpleMemoryAllocator)) +
-    AlignSizeUp(sizeof(MicroAllocator), alignof(MicroAllocator)) +
-    AlignSizeUp(sizeof(MicroBuiltinDataAllocator),
-                alignof(MicroBuiltinDataAllocator)) +
-    AlignSizeUp(sizeof(SubgraphAllocations), alignof(SubgraphAllocations));
-const size_t kMicroAllocatorDefaultTailUsage =
-    kMicroAllocatorDefaultTailUsageWithGivenMemoryPlanner +
-    AlignSizeUp(sizeof(GreedyMemoryPlanner), alignof(GreedyMemoryPlanner));
+size_t MicroAllocator::GetDefaultTailUsage(bool is_memory_planner_given) {
+  // TODO(b/208703041): a template version of AlignSizeUp to make expression
+  // shorter.
+  size_t total_size =
+      AlignSizeUp(sizeof(SimpleMemoryAllocator),
+                  alignof(SimpleMemoryAllocator)) +
+      AlignSizeUp(sizeof(MicroAllocator), alignof(MicroAllocator)) +
+      AlignSizeUp(sizeof(MicroBuiltinDataAllocator),
+                  alignof(MicroBuiltinDataAllocator)) +
+      AlignSizeUp(sizeof(SubgraphAllocations), alignof(SubgraphAllocations));
+  if (!is_memory_planner_given) {
+    total_size +=
+        AlignSizeUp(sizeof(GreedyMemoryPlanner), alignof(GreedyMemoryPlanner));
+  }
+  return total_size;
+}
 
 MicroAllocator::MicroAllocator(SimpleMemoryAllocator* memory_allocator,
                                MicroMemoryPlanner* memory_planner,
@@ -728,6 +740,28 @@ TfLiteTensor* MicroAllocator::AllocatePersistentTfLiteTensor(
   return tensor;
 }
 
+void MicroAllocator::DeallocateTempTfLiteTensor(TfLiteTensor* tensor) {
+  TFLITE_DCHECK(tensor != nullptr);
+
+  if (tensor->quantization.type == kTfLiteAffineQuantization) {
+    TFLITE_DCHECK(tensor->quantization.params != nullptr);
+    TfLiteAffineQuantization* quantization =
+        reinterpret_cast<TfLiteAffineQuantization*>(
+            tensor->quantization.params);
+
+    memory_allocator_->DeallocateTemp(
+        reinterpret_cast<uint8_t*>(quantization->zero_point));
+    memory_allocator_->DeallocateTemp(reinterpret_cast<uint8_t*>(quantization));
+  }
+
+  // Clear the data in case someone still access tensor arena by mistake
+  tensor->quantization.type = kTfLiteNoQuantization;
+  tensor->quantization.params = nullptr;
+  tensor->data.data = nullptr;
+  tensor->dims = nullptr;
+  memory_allocator_->DeallocateTemp(reinterpret_cast<uint8_t*>(tensor));
+}
+
 TfLiteTensor* MicroAllocator::AllocateTempTfLiteTensor(
     const Model* model, const SubgraphAllocations* subgraph_allocations,
     int tensor_index, int subgraph_index) {
@@ -770,6 +804,10 @@ TfLiteTensor* MicroAllocator::AllocateTempTfLiteTensor(
 
 void MicroAllocator::ResetTempAllocations() {
   memory_allocator_->ResetTempAllocations();
+}
+
+bool MicroAllocator::IsAllTempDeallocated() {
+  return memory_allocator_->IsAllTempDeallocated();
 }
 
 TfLiteStatus MicroAllocator::AllocateTfLiteEvalTensors(
@@ -911,6 +949,9 @@ TfLiteStatus MicroAllocator::CommitStaticMemoryPlan(
                                    allocation_info, allocation_info_count));
 
   // Reset all temp allocations used above:
+  memory_allocator_->DeallocateTemp(
+      reinterpret_cast<uint8_t*>(allocation_info));
+  memory_allocator_->DeallocateTemp(planner_arena);
   memory_allocator_->ResetTempAllocations();
 
   size_t actual_available_arena_size =

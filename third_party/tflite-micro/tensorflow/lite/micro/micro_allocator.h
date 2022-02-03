@@ -85,12 +85,6 @@ typedef struct {
   TfLiteEvalTensor* tensors;
 } SubgraphAllocations;
 
-// The fixed amount of memory overhead of MicroAllocator. You can image this
-// number as the arena usage after MicroAllocator is given a model that has zero
-// tensors and zero OPs.
-extern const size_t kMicroAllocatorDefaultTailUsage;
-extern const size_t kMicroAllocatorDefaultTailUsageWithGivenMemoryPlanner;
-
 // Allocator responsible for allocating memory for all intermediate tensors
 // necessary to invoke a model.
 //
@@ -140,6 +134,9 @@ class MicroAllocator {
                                 MicroMemoryPlanner* memory_planner,
                                 ErrorReporter* error_reporter);
 
+  // Returns the fixed amount of memory overhead of MicroAllocator.
+  static size_t GetDefaultTailUsage(bool is_memory_planner_given);
+
   // Allocates internal resources required for model inference for each subgraph
   // from the arena.
   //
@@ -188,10 +185,16 @@ class MicroAllocator {
       const Model* model, const SubgraphAllocations* subgraph_allocations,
       int tensor_index, int subgraph_index);
 
+  virtual void DeallocateTempTfLiteTensor(TfLiteTensor*);
+
   // Resets all temporary allocations. This method should be called after a
   // chain of temp allocations (e.g. chain of TfLiteTensor objects via
   // AllocateTfLiteTensor()).
   virtual void ResetTempAllocations();
+
+  // Returns true if all temporary buffers including temp TfLiteTensor are
+  // already deallocated.
+  virtual bool IsAllTempDeallocated();
 
   // Allocates persistent buffer which has the same life time as the allocator.
   // The memory is immediately available and is allocated from the tail of the
