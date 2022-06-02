@@ -200,8 +200,8 @@ class HpsSoC(LiteXSoC):
         else:
             ram_size = RAM_SIZE
             arena_size = 0
-        self.setup_ram(size=ram_size)
-        self.setup_arena(size=arena_size)
+        self.setup_ram(size=ram_size, cen={"a": cpu_cen})
+        self.setup_arena(size=arena_size, cen={"a": cpu_cen, "b": cfu_cen})
 
         # SPI Flash
         self.setup_litespi_flash()
@@ -238,18 +238,18 @@ class HpsSoC(LiteXSoC):
             self.timer0.add_uptime()
 
 
-    def setup_ram(self, size):
+    def setup_ram(self, size, cen):
         region = SoCRegion(self.sram_origin, size, cached=True, linker=True)
-        self.submodules.lram = ClockDomainsRenamer("osc")(self.platform.create_ram(32, size))
+        self.submodules.lram = ClockDomainsRenamer("osc")(self.platform.create_ram(32, size, cen))
         self.bus.add_slave("sram_lram", self.lram.bus, region)
         self.bus.add_region("sram", region)
 
     # define the "arena" region even if it's length-zero
-    def setup_arena(self, size):
+    def setup_arena(self, size, cen):
         region = SoCRegion(self.arena_origin, size, cached=True, linker=True)
         self.bus.add_region("arena", region)
         if size > 0:
-            self.submodules.arena = ClockDomainsRenamer("osc")(self.platform.create_ram(32, size, dual_port=True))
+            self.submodules.arena = ClockDomainsRenamer("osc")(self.platform.create_ram(32, size, dual_port=True, cen=cen))
             self.bus.add_slave("arena_lram", self.arena.bus, region)
             self.add_config('SOC_SEPARATE_ARENA')
 

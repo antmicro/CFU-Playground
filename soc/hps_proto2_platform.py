@@ -173,7 +173,7 @@ class Platform(LatticePlatform):
     def create_crg(self):
         return _CRG(self, self.sys_clk_freq)
 
-    def create_ram(self, width, size, dual_port=False):
-        return NXLRAM(width, size, dual_port=dual_port)
+    def create_ram(self, width, size, dual_port=False, cen={"a": 0b1, "b": 0b1}):
+        return NXLRAM(width, size, dual_port=dual_port, cen=cen)
 
     # TODO: add create_programmer function

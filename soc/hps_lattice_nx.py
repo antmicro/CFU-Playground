@@ -77,7 +77,7 @@ def initval_parameters(contents, width):
 
 
 class NXLRAM(Module):
-    def __init__(self, width=32, size=128*kB, dual_port=False, init=[]):
+    def __init__(self, width=32, size=128*kB, dual_port=False, init=[], cen={"a": 0b1, "b": 0b1}):
         self.bus = wishbone.Interface(width)
         assert width in [32, 64]
         self.width = width
@@ -154,7 +154,7 @@ class NXLRAM(Module):
                         i_DIA       = datain,
                         i_ADA       = self.bus.adr[adr_bits_start:adr_bits_start+14],
                         i_CLK       = ClockSignal(),
-                        i_CEA       = 0b1,
+                        i_CEA       = cen["a"],
                         i_WEA       = wren,
                         i_CSA       = cs,
                         i_RSTA      = 0b0,
@@ -164,7 +164,7 @@ class NXLRAM(Module):
                         # port B read only
                         i_ADB       = b_addr,
                         o_DOB       = b_dout,
-                        i_CEB       = 0b1,
+                        i_CEB       = cen["b"],
                         i_WEB       = 0b0,
                         i_CSB       = 0b1,
                         i_RSTB      = 0b0,
@@ -179,7 +179,7 @@ class NXLRAM(Module):
                         i_DI       = datain,
                         i_AD       = self.bus.adr[adr_bits_start:adr_bits_start+14],
                         i_CLK      = ClockSignal(),
-                        i_CE       = 0b1,
+                        i_CE       = cen["a"],
                         i_WE       = wren,
                         i_CS       = cs,
                         i_RSTOUT   = 0b0,
