@@ -34,6 +34,7 @@
 #ifndef SKIP_TFLM
 #include "models/models.h"
 #endif
+#include "lram_clk_menu.h"
 
 #ifdef PLATFORM_sim
 static void trace_sim() {
@@ -50,6 +51,7 @@ static struct Menu MENU = {
     "CFU Playground",
     "main",
     {
+        MENU_ITEM('l', "LRAM clock control menu", lram_clk_menu),
 #ifndef SKIP_TFLM
         MENU_ITEM('1', "TfLM Models menu", models_menu),
 #endif

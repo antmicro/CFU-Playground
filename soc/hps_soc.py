@@ -24,6 +24,7 @@ from litex.soc.integration.soc import SoCRegion
 from litex.soc.integration.builder import Builder, builder_args, builder_argdict
 from litex.soc.integration.soc import LiteXSoC, SoCRegion
 from litex.soc.cores.led import LedChaser
+from litex.soc.interconnect.csr import *
 
 from litex import get_data_mod
 
@@ -54,6 +55,25 @@ RAM_SIZE = 320 * KB
 
 SOC_DIR = os.path.dirname(os.path.realpath(__file__))
 
+
+class LRAMClockCtrl(Module, AutoCSR):
+    """
+    A simple class with a 3-bit CSR used to directly control dual port LRAM
+    clock enable.
+    """
+
+    def __init__(self):
+        self.csr = CSRStorage(3, reset=7, description="LRAM clock control")
+
+        self.ram_cen  = Signal(reset=1)     # Clock enable - RAM port A
+        self.arena_cen_b  = Signal(reset=1) # Clock enable - Arena port B
+        self.arena_cen_a  = Signal(reset=1) # Clock enable - Arena port A
+
+        self.sync += [
+            If(self.csr.re, self.arena_cen_a.eq(self.csr.storage[0])),
+            If(self.csr.re, self.arena_cen_b.eq(self.csr.storage[1])),
+            If(self.csr.re, self.ram_cen.eq(self.csr.storage[2])),
+        ]
 
 class CfuCpuClockCtrl(Module):
     """
@@ -189,6 +209,10 @@ class HpsSoC(LiteXSoC):
             self.submodules.cfu_cpu_clk_ctl = ClockDomainsRenamer("osc")(
                     CfuCpuClockCtrl(self.cpu.cfu_bus, cfu_cen, cpu_cen))
 
+        # LRAM clock and reset control via CSRs
+        self.submodules.lram_ctl = LRAMClockCtrl()
+        self.csr.add("lram_ctl")
+
         # RAM
         if separate_arena:
             ram_size = 64*KB
@@ -200,8 +224,8 @@ class HpsSoC(LiteXSoC):
         else:
             ram_size = RAM_SIZE
             arena_size = 0
-        self.setup_ram(size=ram_size, cen={"a": cpu_cen})
-        self.setup_arena(size=arena_size, cen={"a": cpu_cen, "b": cfu_cen})
+        self.setup_ram(size=ram_size, cen={"a": self.lram_ctl.ram_cen})
+        self.setup_arena(size=arena_size, cen={"a": self.lram_ctl.arena_cen_a, "b": self.lram_ctl.arena_cen_b})
 
         # SPI Flash
         self.setup_litespi_flash()
